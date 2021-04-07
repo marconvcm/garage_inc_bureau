@@ -30,7 +30,14 @@ public class ScheduleOrderInteractor implements Interactor<ScheduleOrderInteract
     public Output run(Input input) throws Exception {
 
         Optional<Order> optionalOrder = repository.findFirstByScheduledDateTime(input.getScheduledDateTime());
-        if(optionalOrder.isPresent()) { throw new OrderAlreadyBookedOnSameTimeException(); }
+        if(optionalOrder.isPresent()) {
+            Order order = optionalOrder.get();
+            LocalDateTime finalDateTime = input.getScheduledDateTime().plusHours(1);
+            if(finalDateTime.isAfter(order.getScheduledDateTime())) {
+                throw new OrderAlreadyBookedOnSameRangeOfTimeException();
+            }
+            throw new OrderAlreadyBookedOnSameTimeException();
+        }
 
         Order order = parse(input);
         order = repository.save(order);
@@ -66,6 +73,8 @@ public class ScheduleOrderInteractor implements Interactor<ScheduleOrderInteract
     public static class BusinessException extends Exception {}
 
     public static class OrderAlreadyBookedOnSameTimeException extends BusinessException {}
+
+    public static class OrderAlreadyBookedOnSameRangeOfTimeException extends BusinessException {}
 
     public static class Input {
 
