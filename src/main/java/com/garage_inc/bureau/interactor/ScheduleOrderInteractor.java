@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Random;
 
 @Component
@@ -26,7 +27,18 @@ public class ScheduleOrderInteractor implements Interactor<ScheduleOrderInteract
     }
 
     @Override
-    public Output run(Input input) {
+    public Output run(Input input) throws Exception {
+
+        Optional<Order> optionalOrder = repository.findFirstByScheduledDateTime(input.getScheduledDateTime());
+        if(optionalOrder.isPresent()) {
+            Order order = optionalOrder.get();
+            LocalDateTime finalDateTime = input.getScheduledDateTime().plusHours(1);
+            if(finalDateTime.isAfter(order.getScheduledDateTime())) {
+                throw new OrderAlreadyBookedOnSameRangeOfTimeException();
+            }
+            throw new OrderAlreadyBookedOnSameTimeException();
+        }
+
         Order order = parse(input);
         order = repository.save(order);
         order = sendOtpMessage(order);
@@ -57,6 +69,12 @@ public class ScheduleOrderInteractor implements Interactor<ScheduleOrderInteract
     private String getFreshOtp() {
         return String.format("%06d", rnd.nextInt(999999));
     }
+
+    public static class BusinessException extends Exception {}
+
+    public static class OrderAlreadyBookedOnSameTimeException extends BusinessException {}
+
+    public static class OrderAlreadyBookedOnSameRangeOfTimeException extends BusinessException {}
 
     public static class Input {
 
